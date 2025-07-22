@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="24dp"
+    android:background="@color/backgroundLight">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Titre -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Demande de congé"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="@color/colorPrimary"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Type de congé -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Type de congé"
+            android:textColor="@color/textPrimary" />
+
+        <Spinner
+            android:id="@+id/spinnerType"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Date de début -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Date de début"
+            android:textColor="@color/textPrimary" />
+
+        <EditText
+            android:id="@+id/editTextDateDebut"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="JJ/MM/AAAA"
+            android:focusable="false"
+            android:background="@drawable/edittext_background"
+            android:padding="12dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Date de fin -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Date de fin"
+            android:textColor="@color/textPrimary" />
+
+        <EditText
+            android:id="@+id/editTextDateFin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="JJ/MM/AAAA"
+            android:focusable="false"
+            android:background="@drawable/edittext_background"
+            android:padding="12dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Motif -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Motif"
+            android:textColor="@color/textPrimary" />
+
+        <EditText
+            android:id="@+id/editTextMotif"
+            android:layout_width="match_parent"
+            android:layout_height="120dp"
+            android:hint="Expliquer votre demande"
+            android:gravity="top|start"
+            android:background="@drawable/edittext_background"
+            android:padding="12dp"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Bouton Envoyer -->
+        <Button
+            android:id="@+id/btnEnvoyer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Envoyer la demande"
+            android:textColor="@color/colorWhite"
+            android:textAlignment="center"
+            android:background="@color/colorPrimary"
+            android:backgroundTint="@color/colorPrimary" />
+
+    </LinearLayout>
+</ScrollView>

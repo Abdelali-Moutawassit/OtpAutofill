@@ -1,0 +1,256 @@
+package com.example.otpautofill;
+
+
+import android.Manifest;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.pm.PackageManager;
+import android.os.Build;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
+import com.google.android.gms.auth.api.phone.SmsRetriever;
+import com.google.android.gms.auth.api.phone.SmsRetrieverClient;
+import com.google.android.gms.common.api.CommonStatusCodes;
+import com.google.android.gms.common.api.Status;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public class MainActivity extends AppCompatActivity {
+
+    private static final String TAG = "MainActivity";
+    private static final int SMS_CONSENT_REQUEST = 2;
+    private static final int REQUEST_SMS_PERMISSION = 1;
+
+    private EditText phoneNumberInput;
+    private EditText otpInput;
+    private Button startVerificationButton;
+    private Button verifyOtpButton;
+    private TextView statusText;
+    private TextView hashText;
+    private TextView instructionsText;
+
+    private SMSReceiver smsReceiver;
+    private String appSignature;
+    private boolean isReceiverRegistered = false;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        initializeViews();
+        requestSmsPermission();
+        getAppSignature();
+        setupBroadcastReceiver();
+    }
+
+    private void initializeViews() {
+        phoneNumberInput = findViewById(R.id.phoneNumberInput);
+        otpInput = findViewById(R.id.otpInput);
+        startVerificationButton = findViewById(R.id.startVerificationButton);
+        verifyOtpButton = findViewById(R.id.verifyOtpButton);
+        statusText = findViewById(R.id.statusText);
+        hashText = findViewById(R.id.hashText);
+        instructionsText = findViewById(R.id.instructionsText);
+
+        startVerificationButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startSMSListener();
+            }
+        });
+
+        verifyOtpButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                verifyOTP();
+            }
+        });
+    }
+
+    private void requestSmsPermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS},
+                    REQUEST_SMS_PERMISSION);
+        }
+    }
+
+    private void getAppSignature() {
+        AppSignatureHelper appSignatureHelper = new AppSignatureHelper(this);
+        appSignature = appSignatureHelper.getAppSignatures().get(0);
+        hashText.setText("Hash de l'app: " + appSignature);
+
+        // Instructions pour l'émulateur
+        String instructions = "INSTRUCTIONS POUR L'ÉMULATEUR:\n\n" +
+                "1. Cliquez sur 'Démarrer Vérification'\n" +
+                "2. Dans l'émulateur, allez dans l'app Messages\n" +
+                "3. Envoyez un SMS avec ce format exact:\n\n" +
+                "Votre code de vérification est: 123456\n\n" +
+                appSignature + "\n\n" +
+                "4. Le code sera détecté automatiquement";
+
+        instructionsText.setText(instructions);
+    }
+
+    private void setupBroadcastReceiver() {
+        smsReceiver = new SMSReceiver();
+        smsReceiver.setOtpReceiveListener(new SMSReceiver.OtpReceiveListener() {
+            @Override
+            public void onOtpReceived(String otp) {
+                Log.d(TAG, "OTP reçu: " + otp);
+                otpInput.setText(otp);
+                statusText.setText("Code OTP détecté automatiquement: " + otp);
+                verifyOtpButton.setEnabled(true);
+            }
+
+            @Override
+            public void onOtpTimeout() {
+                Log.d(TAG, "Timeout OTP");
+                statusText.setText("Timeout - Aucun SMS reçu");
+            }
+        });
+    }
+
+    private void startSMSListener() {
+        SmsRetrieverClient client = SmsRetriever.getClient(this);
+
+        Task<Void> task = client.startSmsRetriever();
+        task.addOnSuccessListener(new OnSuccessListener<Void>() {
+            @Override
+            public void onSuccess(Void aVoid) {
+                Log.d(TAG, "SMS Retriever démarré avec succès");
+                statusText.setText("En attente du SMS de vérification...");
+
+                // Enregistrer le récepteur avec gestion des versions Android
+                registerSmsReceiver();
+
+                // Simuler l'envoi d'une requête au serveur
+                simulateServerRequest();
+            }
+        });
+
+        task.addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(Exception e) {
+                Log.e(TAG, "Erreur démarrage SMS Retriever", e);
+                statusText.setText("Erreur: " + e.getMessage());
+            }
+        });
+    }
+
+    private void registerSmsReceiver() {
+        if (!isReceiverRegistered && smsReceiver != null) {
+            IntentFilter intentFilter = new IntentFilter(SmsRetriever.SMS_RETRIEVED_ACTION);
+
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    // Android 13+ (API 33+) nécessite RECEIVER_EXPORTED ou RECEIVER_NOT_EXPORTED
+                    registerReceiver(smsReceiver, intentFilter, Context.RECEIVER_NOT_EXPORTED);
+                } else {
+                    // Versions antérieures d'Android
+                    registerReceiver(smsReceiver, intentFilter);
+                }
+                isReceiverRegistered = true;
+                Log.d(TAG, "SMSReceiver enregistré avec succès");
+            } catch (Exception e) {
+                Log.e(TAG, "Erreur lors de l'enregistrement du receiver", e);
+                statusText.setText("Erreur d'enregistrement du récepteur SMS");
+            }
+        }
+    }
+
+    private void simulateServerRequest() {
+        String phoneNumber = phoneNumberInput.getText().toString();
+        if (phoneNumber.isEmpty()) {
+            phoneNumber = "(650) 555-1212";
+        }
+
+        statusText.setText("Simulation envoi au serveur...\n" +
+                "Numéro: " + phoneNumber + "\n" +
+                "En attente du SMS...");
+
+        Toast.makeText(this,
+                "Maintenant, envoyez un SMS dans l'émulateur avec le format indiqué",
+                Toast.LENGTH_LONG).show();
+    }
+
+    private void verifyOTP() {
+        String otp = otpInput.getText().toString();
+        if (otp.isEmpty()) {
+            Toast.makeText(this, "Veuillez entrer le code OTP", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Simuler la vérification
+        if (otp.length() == 6) {
+            statusText.setText("✅ Code OTP vérifié avec succès!\n" +
+                    "Utilisateur authentifié: " + otp);
+            Toast.makeText(this, "Vérification réussie!", Toast.LENGTH_SHORT).show();
+        } else {
+            statusText.setText("❌ Code OTP invalide");
+            Toast.makeText(this, "Code invalide", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unregisterSmsReceiver();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Optionnel: désenregistrer en pause pour économiser les ressources
+        // unregisterSmsReceiver();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Optionnel: réenregistrer si désenregistré en pause
+    }
+
+    private void unregisterSmsReceiver() {
+        if (isReceiverRegistered && smsReceiver != null) {
+            try {
+                unregisterReceiver(smsReceiver);
+                isReceiverRegistered = false;
+                Log.d(TAG, "SMSReceiver désenregistré avec succès");
+            } catch (IllegalArgumentException e) {
+                Log.e(TAG, "Receiver déjà désenregistré ou jamais enregistré", e);
+            }
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_SMS_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "Permission SMS accordée", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Permission SMS requise pour le bon fonctionnement",
+                        Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+}

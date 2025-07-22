@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Couleurs de base -->
+    <color name="colorPrimary">#FF5722</color> <!-- Deep Orange -->
+    <color name="colorPrimaryVariant">#E64A19</color> <!-- Variante plus foncée -->
+    <color name="colorAccent">#FF9800</color> <!-- Orange plus clair -->
+
+    <!-- Autres couleurs -->
+    <color name="colorWhite">#FFFFFF</color>
+    <color name="colorBlack">#000000</color>
+    <color name="colorGray">#F5F5F5</color>
+    <color name="textPrimary">#212121</color>
+    <color name="textSecondary">#757575</color>
+
+    <!-- Fond clair et sombre -->
+    <color name="backgroundLight">#FFFFFF</color>
+    <color name="backgroundDark">#121212</color>
+</resources>
