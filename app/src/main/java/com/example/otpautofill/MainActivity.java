@@ -44,9 +44,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView hashText;
     private TextView instructionsText;
 
-    private SMSReceiver smsReceiver;
     private String appSignature;
-    private boolean isReceiverRegistered = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -110,17 +108,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupBroadcastReceiver() {
-        smsReceiver = new SMSReceiver();
-        smsReceiver.setOtpReceiveListener(new SMSReceiver.OtpReceiveListener() {
+        // Utilisation du listener statique
+        SMSReceiver.setOtpReceiveListener(new SMSReceiver.OtpReceiveListener() {
             @Override
             public void onOtpReceived(String otp) {
-                Log.d(TAG, "OTP reçu: " + otp);
+                Log.d(TAG, "Callback onOtpReceived appelé avec OTP: " + otp);
 
-                // CORRECTION: Exécuter sur le thread principal (UI thread)
+                // Exécuter sur le thread principal (UI thread)
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         try {
+                            Log.d(TAG, "Mise à jour UI avec OTP: " + otp);
                             otpInput.setText(otp);
                             statusText.setText("Code OTP détecté automatiquement: " + otp);
                             verifyOtpButton.setEnabled(true);
@@ -130,7 +129,7 @@ public class MainActivity extends AppCompatActivity {
                                     "Code OTP rempli automatiquement: " + otp,
                                     Toast.LENGTH_SHORT).show();
 
-                            Log.d(TAG, "Interface utilisateur mise à jour avec OTP: " + otp);
+                            Log.d(TAG, "Interface utilisateur mise à jour avec succès");
                         } catch (Exception e) {
                             Log.e(TAG, "Erreur lors de la mise à jour de l'UI", e);
                         }
@@ -140,9 +139,8 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onOtpTimeout() {
-                Log.d(TAG, "Timeout OTP");
+                Log.d(TAG, "Callback onOtpTimeout appelé");
 
-                // CORRECTION: Exécuter sur le thread principal pour les mises à jour UI
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -157,6 +155,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startSMSListener() {
+        Log.d(TAG, "Démarrage du SMS Listener");
+
         SmsRetrieverClient client = SmsRetriever.getClient(this);
 
         Task<Void> task = client.startSmsRetriever();
@@ -165,9 +165,6 @@ public class MainActivity extends AppCompatActivity {
             public void onSuccess(Void aVoid) {
                 Log.d(TAG, "SMS Retriever démarré avec succès");
                 statusText.setText("En attente du SMS de vérification...");
-
-                // Enregistrer le récepteur avec gestion des versions Android
-                registerSmsReceiver();
 
                 // Simuler l'envoi d'une requête au serveur
                 simulateServerRequest();
@@ -181,27 +178,6 @@ public class MainActivity extends AppCompatActivity {
                 statusText.setText("Erreur: " + e.getMessage());
             }
         });
-    }
-
-    private void registerSmsReceiver() {
-        if (!isReceiverRegistered && smsReceiver != null) {
-            IntentFilter intentFilter = new IntentFilter(SmsRetriever.SMS_RETRIEVED_ACTION);
-
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    // Android 13+ (API 33+) nécessite RECEIVER_EXPORTED ou RECEIVER_NOT_EXPORTED
-                    registerReceiver(smsReceiver, intentFilter, Context.RECEIVER_NOT_EXPORTED);
-                } else {
-                    // Versions antérieures d'Android
-                    registerReceiver(smsReceiver, intentFilter);
-                }
-                isReceiverRegistered = true;
-                Log.d(TAG, "SMSReceiver enregistré avec succès");
-            } catch (Exception e) {
-                Log.e(TAG, "Erreur lors de l'enregistrement du receiver", e);
-                statusText.setText("Erreur d'enregistrement du récepteur SMS");
-            }
-        }
     }
 
     private void simulateServerRequest() {
@@ -240,32 +216,21 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        unregisterSmsReceiver();
+        // Supprimer le listener pour éviter les fuites mémoire
+        SMSReceiver.removeOtpReceiveListener();
+        Log.d(TAG, "Activity détruite, listener supprimé");
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        // Optionnel: désenregistrer en pause pour économiser les ressources
-        // unregisterSmsReceiver();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        // Optionnel: réenregistrer si désenregistré en pause
-    }
-
-    private void unregisterSmsReceiver() {
-        if (isReceiverRegistered && smsReceiver != null) {
-            try {
-                unregisterReceiver(smsReceiver);
-                isReceiverRegistered = false;
-                Log.d(TAG, "SMSReceiver désenregistré avec succès");
-            } catch (IllegalArgumentException e) {
-                Log.e(TAG, "Receiver déjà désenregistré ou jamais enregistré", e);
-            }
-        }
+        // Rétablir le listener au cas où
+        setupBroadcastReceiver();
     }
 
     @Override
