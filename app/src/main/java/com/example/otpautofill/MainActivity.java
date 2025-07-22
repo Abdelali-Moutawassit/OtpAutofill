@@ -1,6 +1,5 @@
 package com.example.otpautofill;
 
-
 import android.Manifest;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -116,15 +115,43 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onOtpReceived(String otp) {
                 Log.d(TAG, "OTP reçu: " + otp);
-                otpInput.setText(otp);
-                statusText.setText("Code OTP détecté automatiquement: " + otp);
-                verifyOtpButton.setEnabled(true);
+
+                // CORRECTION: Exécuter sur le thread principal (UI thread)
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            otpInput.setText(otp);
+                            statusText.setText("Code OTP détecté automatiquement: " + otp);
+                            verifyOtpButton.setEnabled(true);
+
+                            // Toast pour confirmer
+                            Toast.makeText(MainActivity.this,
+                                    "Code OTP rempli automatiquement: " + otp,
+                                    Toast.LENGTH_SHORT).show();
+
+                            Log.d(TAG, "Interface utilisateur mise à jour avec OTP: " + otp);
+                        } catch (Exception e) {
+                            Log.e(TAG, "Erreur lors de la mise à jour de l'UI", e);
+                        }
+                    }
+                });
             }
 
             @Override
             public void onOtpTimeout() {
                 Log.d(TAG, "Timeout OTP");
-                statusText.setText("Timeout - Aucun SMS reçu");
+
+                // CORRECTION: Exécuter sur le thread principal pour les mises à jour UI
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        statusText.setText("Timeout - Aucun SMS reçu");
+                        Toast.makeText(MainActivity.this,
+                                "Timeout - Aucun SMS reçu dans les délais",
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
             }
         });
     }
